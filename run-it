@@ -1,0 +1,1 @@
+erl -noshell -s semester go -s init stop
