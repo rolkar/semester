@@ -10,9 +10,23 @@ go() ->
     display_header(),
     display(History, no_bank).
 
-extract(Line) ->
-    [Date, Command | _] = string:tokens(Line, " "),
-    #{date => extract_date(Date), command => extract_command(Command)}.
+extract(RawLine) ->
+    case string:strip(strip_comment(RawLine)) of
+	"" ->
+	    nop;
+	Line ->
+	    [Date, Command | _] = string:tokens(Line, " "),
+	    #{date => extract_date(Date), command => extract_command(Command)}
+    end.
+
+strip_comment(RawLine) ->
+    case string:str(RawLine, "#") of
+	0 ->
+	    RawLine;
+	N ->
+	    {Line,_} = lists:split(N-1, RawLine),
+	    Line
+    end.
 
 extract_date(RawDate) ->
     [Year, Month, Day] = string:tokens(RawDate, "-"),
@@ -38,12 +52,16 @@ history(Commands) ->
 		  #{acc => 0,
 		    normal => 0,
 		    pre => 0,
-		    used_pre => 0}
+		    used_pre => 0,
+		    ps_acc => 0,
+		    ps_sav => 0}
 	     },
 	    []).
 
 history([], _State, Ops) ->
     lists:reverse(Ops);
+history([nop|Commands], State, Ops) ->
+    history(Commands, State, Ops);
 history(Commands = [#{date := CDate, command := Command} | Tail],
 	State = #{date := Date},
 	Ops) ->
@@ -96,10 +114,18 @@ command({off, Days}, State = #{bank := Bank}) ->
 				 normal => Days - Pre,
 				 used_pre => UPre + Pre}}
     end;
+command(nop, State) ->
+    State;
 command({pre, Days}, State = #{bank := Bank}) ->
     State#{bank => Bank#{pre => Days}};
 command({days, Days}, State) ->
-    State#{days => Days}.
+    State#{days => Days};
+command({ps_acc, Days}, State = #{bank := Bank}) ->
+    NewBank = Bank#{ps_acc => Days},
+    State#{bank => NewBank};
+command({ps_sav, Days}, State = #{bank := Bank}) ->
+    NewBank = Bank#{ps_sav => Days},
+    State#{bank => NewBank}.
 
 display([], _) ->
     ok;
@@ -117,8 +143,8 @@ display_op(Date, {Op,Arg}) ->
     io:format("~s ~p=~p~n", [pretty_date(Date), Op, Arg]).
 
 display_header() ->
-    io:format("~10s ~10s ~4s ~4s ~4s ~4s~n",
-	      ["", "", "Acc", "Norm", "Pre", "UPre"]).
+    io:format("~10s ~10s ~4s ~4s ~4s ~4s ~4s ~4s~n",
+	      ["", "", "Acc", "Norm", "Pre", "UPre", "Pacc", "Psav"]).
 
 display_bank(Date, Bank, PrevBank) ->
     case Bank == PrevBank of
@@ -129,8 +155,12 @@ display_bank(Date, Bank, PrevBank) ->
 	    Normal = maps:get(normal, Bank),
 	    Pre = maps:get(pre, Bank),
 	    UPre = maps:get(used_pre, Bank),
-	    io:format("~s ~10s ~4w ~4w ~4w ~4w~n",
-		      [pretty_date(Date), "", Acc, Normal, Pre, UPre])
+	    Pacc = maps:get(ps_acc, Bank),
+	    Psav = maps:get(ps_sav, Bank),
+
+	    io:format("~s ~10s ~4w ~4w ~4w ~4w ~4w ~4w~n",
+		      [pretty_date(Date), "", Acc, Normal, Pre, UPre,
+		       Pacc, Psav])
     end.
 
 pretty_date({Year, Month, Day}) ->

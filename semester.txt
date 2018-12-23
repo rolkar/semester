@@ -1,16 +1,24 @@
-2017-03-01 pre=26            Number of holidays in advance
-2017-03-01 days=30           Number of days per year
-2017-07-10 off=5             Days off
+2017-03-01 pre=26       # Number of holidays in advance
+2017-03-01 days=30      # Number of days per year
+2017-03-01 ps_acc=26    # According to payslip holidays left (days - used)
+2017-07-01 ps_acc=10
+2017-07-10 off=5        # Days off
 2017-07-17 off=5
 2017-07-24 off=5
 2017-07-31 off=1
 2017-10-02 off=3
-2018-01-01 pre=0             Clearing pre! Is this correct?
-2018-01-01 convert           Convert earned days to real days
+2017-11-01 ps_acc=7
+2018-01-01 pre=0        # Clearing pre! Is this correct?
+2018-01-01 convert      # Convert earned days to real days
+2018-01-01 ps_acc=29
+2018-01-01 ps_sav=7     # Saved holidays
 2018-01-05 off=1
-2018-05-01 days=18           Number of days per year for 60% work
+2018-05-01 days=18      # Number of days per year for 60% work
+2018-07-01 ps_acc=29
 2018-07-02 off=3
 2018-07-09 off=3
 2018-07-16 off=3
 2018-07-23 off=3
+2018-10-01 ps_sav=5
+2018-12-01 ps_acc=6
 2019-01-01 convert
