@@ -53,6 +53,8 @@ history(Commands) ->
 		    normal => 0,
 		    pre => 0,
 		    used_pre => 0,
+		    saved => 0,
+		    lost => 0,
 		    ps_acc => 0,
 		    ps_sav => 0}
 	     },
@@ -81,7 +83,7 @@ advance_one_day(State) ->
     AccPerDay = acc_per_day(maps:get(days, State), element(1, NextDate)),
     NextAcc = maps:get(acc, State) + AccPerDay,
     Bank = maps:get(bank, State),
-    NextBank = maps:put(acc, erlang:round(math:floor(NextAcc)), Bank),
+    NextBank = maps:put(acc, erlang:round(NextAcc), Bank),
     State#{date => NextDate, acc => NextAcc, bank => NextBank}.
     
 next_date(Date) ->
@@ -96,24 +98,10 @@ days(Year) ->
     Last = calendar:date_to_gregorian_days({Year, 12, 31}),
     Last - First + 1.
 
-command({convert}, State = #{acc := RawAcc, bank := Bank}) ->
-    #{acc := Acc, normal := Normal} = Bank,
-    NewBank = Bank#{acc => 0, normal => Normal + Acc},
-    NewRawAcc = RawAcc - Acc,
-    State#{acc => NewRawAcc, bank => NewBank};
-command({off, Days}, State = #{bank := Bank}) ->
-    #{pre := Pre, normal := Normal, used_pre := UPre} = Bank,
-    case Pre of
-	0 ->
-	    State#{bank => Bank#{normal => Normal - Days}};
-	Pre when Days =< Pre ->
-	    State#{bank => Bank#{pre => Pre - Days,
-				 used_pre => UPre + Days}};
-	Pre ->
-	    State#{bank => Bank#{pre => 0,
-				 normal => Days - Pre,
-				 used_pre => UPre + Pre}}
-    end;
+command({convert}, State) ->
+    add_acc(save_days(State));
+command({off, Days}, State) ->
+    off(Days, State);
 command(nop, State) ->
     State;
 command({pre, Days}, State = #{bank := Bank}) ->
@@ -127,6 +115,43 @@ command({ps_acc, Days}, State = #{bank := Bank}) ->
 command({ps_sav, Days}, State = #{bank := Bank}) ->
     NewBank = Bank#{ps_sav => Days},
     State#{bank => NewBank}.
+
+off(0, State) ->
+    State;
+off(Days, State = #{bank := Bank}) ->
+    NewBank = off_one(Bank),
+    off(Days-1, State#{bank => NewBank}).
+
+save_days(State = #{bank := Bank}) ->
+    #{normal := Normal, saved := Saved, used_pre := UPre} = Bank,
+    case take_five(Normal) of
+	{0, 0} ->
+	    State;
+	{_, 0} ->
+	    NewBank = Bank#{normal := 0, saved := Saved + Normal},
+	    State#{bank => NewBank};
+	{N, P} ->
+	    NewBank = Bank#{normal := 0, saved := Saved + N, used_pre := UPre - P},
+	    State#{bank => NewBank}
+    end.
+
+take_five(N) when N < 6 ->
+    {N,0};
+take_five(N) ->
+    {5,N-5}.
+
+add_acc(State = #{acc := RawAcc, bank := Bank}) ->
+    #{acc := Acc, normal := Normal} = Bank,
+    NewBank = Bank#{acc => 0, normal => Normal + Acc},
+    NewRawAcc = RawAcc - Acc,
+    State#{acc => NewRawAcc, bank => NewBank}.
+
+off_one(Bank = #{saved := 0, normal := 0, pre := Pre, used_pre := UPre}) ->
+    Bank#{pre => Pre - 1, used_pre => UPre + 1};
+off_one(Bank = #{saved := 0, normal := Normal}) ->
+    Bank#{normal => Normal -1};
+off_one(Bank = #{saved := Saved}) ->
+    Bank#{saved => Saved - 1}.
 
 display([], _) ->
     ok;
@@ -144,8 +169,11 @@ display_op(Date, {Op,Arg}) ->
     io:format("~s ~p=~p~n", [pretty_date(Date), Op, Arg]).
 
 display_header() ->
-    io:format("~10s ~10s ~4s ~4s ~4s ~4s ~4s ~4s~n",
-	      ["", "", "Acc", "Norm", "Pre", "UPre", "Pacc", "Psav"]).
+    io:format("~10s ~10s ~4s ~4s ~4s - ~4s ~4s ~4s - ~4s ~4s~n",
+	      ["", "",
+	       "Acc", "Norm", "Pre",
+	       "Sav", "Lost", "UPre",
+	       "Pacc", "Psav"]).
 
 display_bank(Date, Bank, PrevBank) ->
     case Bank == PrevBank of
@@ -155,12 +183,16 @@ display_bank(Date, Bank, PrevBank) ->
 	    Acc = maps:get(acc, Bank),
 	    Normal = maps:get(normal, Bank),
 	    Pre = maps:get(pre, Bank),
+	    Saved = maps:get(saved, Bank),
+	    Lost = maps:get(lost, Bank),
 	    UPre = maps:get(used_pre, Bank),
 	    Pacc = maps:get(ps_acc, Bank),
 	    Psav = maps:get(ps_sav, Bank),
 
-	    io:format("~s ~10s ~4w ~4w ~4w ~4w ~4w ~4w~n",
-		      [pretty_date(Date), "", Acc, Normal, Pre, UPre,
+	    io:format("~s ~10s ~4w ~4w ~4w - ~4w ~4w ~4w - ~4w ~4w~n",
+		      [pretty_date(Date), "",
+		       Acc, Normal, Pre,
+		       Saved, Lost, UPre,
 		       Pacc, Psav])
     end.
 
