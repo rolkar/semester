@@ -8,7 +8,7 @@
 2017-07-31 off=1
 2017-10-02 off=3
 2017-11-01 ps_acc=7
-2018-01-01 pre=0        # Clearing pre! Is this correct?
+2018-01-01 pre=4        # Four more holidays in advance
 2018-01-01 convert      # Convert earned days to real days
 2018-01-01 ps_acc=29
 2018-01-01 ps_sav=7     # Saved holidays
@@ -22,3 +22,5 @@
 2018-10-01 ps_sav=5
 2018-12-01 ps_acc=6
 2019-01-01 convert
+2018-01-01 ps_acc=30    # Guessed
+2018-01-01 ps_sav=11    # Guessed

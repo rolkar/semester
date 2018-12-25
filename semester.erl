@@ -117,7 +117,8 @@ command({off, Days}, State = #{bank := Bank}) ->
 command(nop, State) ->
     State;
 command({pre, Days}, State = #{bank := Bank}) ->
-    State#{bank => Bank#{pre => Days}};
+    #{pre := Pre} = Bank,
+    State#{bank => Bank#{pre => Pre + Days}};
 command({days, Days}, State) ->
     State#{days => Days};
 command({ps_acc, Days}, State = #{bank := Bank}) ->
