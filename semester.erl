@@ -8,6 +8,7 @@ go() ->
     Commands = [ extract(L) || L <- Lines ],
     History = history(Commands),
     display_header(),
+    put(date, nodate),
     display(History, no_bank).
 
 extract(RawLine) ->
@@ -47,9 +48,10 @@ history(Commands) ->
     history(Commands,
 	    #{date => First,
 	      weekdays => 0,
-	      work_day_sallary => 0,
-	      work_days_per_year => 250,
-	      sallary_last_year => 0,
+	      workday_sallary => 0,
+	      sum_weekdays => 0,
+	      sum_days => 0,
+	      mean_weekdays_last_year => 0,
 	      bank =>
 		  #{days => 0,
 		    saved => 0,
@@ -58,7 +60,8 @@ history(Commands) ->
 		    pre_used => 0,
 		    pre_saved => 0,
 		    ps_days => 0,
-		    ps_saved => 0}
+		    ps_saved => 0,
+		    payout => 0}
 	     },
 	    []).
 
@@ -71,7 +74,7 @@ history(Commands = [#{date := CDate, command := Command} | Tail],
 	Ops) ->
     case Date < CDate of
 	true ->
-	    NextState = advance_one_day(State), 
+	    NextState = sum_days(advance_one_day(State)), 
 	    history(Commands, NextState, Ops);
 	false ->
 	    NextState = command(Command, State),
@@ -82,7 +85,10 @@ history(Commands = [#{date := CDate, command := Command} | Tail],
 advance_one_day(State) ->
     NextDate = next_date(maps:get(date, State)),
     State#{date => NextDate}.
-    
+
+sum_days(State = #{weekdays := Weekdays}) ->
+    add_map(sum_days, 1, add_map(sum_weekdays, Weekdays, State)).
+
 next_date(Date) ->
     NextDate = calendar:date_to_gregorian_days(Date)+1,
     calendar:gregorian_days_to_date(NextDate).
@@ -92,15 +98,15 @@ command({add, Days}, State) ->
 command({pre_add, Days}, State) ->
     add_bank(pre_days, Days, State);
 command({sallary, Sallary}, State) ->
-    State#{work_day_sallary => Sallary};
+    set_payout(State#{workday_sallary => Sallary});
 command({ps, Days}, State) ->
     put_bank(ps_days, Days, State);
 command({ps_save, Days}, State) ->
     put_bank(ps_saved, Days, State);
 command({new_year}, State) ->
-    save_days(compute_work_day_salary(State));
+    save_days(set_payout(compute_mean_weekdays(State)));
 command({weekdays, Days}, State) ->
-    convert_weekdays(Days, State);
+    set_payout(convert_weekdays(Days, State));
 command({off, Days}, State) ->
     off(Days, State);
 command({days, Days}, State) ->
@@ -125,8 +131,20 @@ off(Days, State = #{bank := Bank}) ->
     NewBank = off_one(Bank),
     off(Days-1, State#{bank => NewBank}).
 
-compute_work_day_salary(State) ->
-    State.   %% TODO ---- needs to be implemented
+compute_mean_weekdays(State = #{sum_days := SumDays, sum_weekdays := SumWeekDays}) ->
+    MeanWeekDays = SumWeekDays/SumDays,
+    State#{sum_days => 0,
+	   sum_weekdays => 0,
+	   mean_weekdays_last_year => MeanWeekDays}.
+
+set_payout(State = #{mean_weekdays_last_year := 0,
+		     workday_sallary := Sallary}) ->
+    put_bank(payout, Sallary, State);
+set_payout(State = #{mean_weekdays_last_year := MeanDays,
+		     weekdays := Days,
+		     workday_sallary := Sallary}) ->
+    CurrentSallary = round(Sallary*MeanDays/Days),
+    put_bank(payout, CurrentSallary, State).
 
 save_days(State = #{bank := Bank0}) ->
     #{days := Days,
@@ -160,30 +178,28 @@ off_one(Bank = #{days := Days}) ->
 
 display([], _) ->
     ok;
-display([{Date, advance, Bank} | Ops], PrevBank) ->
-    display_bank(Date, Bank, PrevBank),
-    display(Ops, Bank);
 display([{Date, Op, Bank} | Ops], PrevBank) ->
     display_op(Date, Op),
-    display_bank(Date, Bank, PrevBank),
+    display_bank(Bank, PrevBank),
     display(Ops, Bank).
 
 display_op(Date, {Op}) ->
-    io:format("~s ~p~n", [pretty_date(Date), Op]);
+    io:format("~10s ~14s ", [pretty_date(Date), pretty_op(Op)]);
 display_op(Date, {Op,Arg}) ->
-    io:format("~s ~p=~p~n", [pretty_date(Date), Op, Arg]).
+    io:format("~10s ~14s ", [pretty_date(Date), pretty_op(Op, Arg)]).
 
 display_header() ->
-    io:format("~10s ~10s ~6s ~6s ~6s - ~6s ~6s ~6s - ~6s ~6s~n",
+    io:format("~10s ~14s ~6s ~6s ~6s - ~6s ~6s ~6s - ~6s ~6s - ~6s~n",
 	      ["", "",
 	       "Days", "Saved", "Lost",
 	       "PrD", "PrS", "PrUsd",
-	       "PsD", "PsS"]).
+	       "PsD", "PsS",
+	       "Pay"]).
 
-display_bank(Date, Bank, PrevBank) ->
+display_bank(Bank, PrevBank) ->
     case Bank == PrevBank of
 	true ->
-	    ignore;
+	    io:format("~n", []);
 	false ->
 	    Days = maps:get(days, Bank),
 	    Saved = maps:get(saved, Bank),
@@ -193,16 +209,29 @@ display_bank(Date, Bank, PrevBank) ->
 	    PreU = maps:get(pre_used, Bank),
 	    PsD = maps:get(ps_days, Bank),
 	    PsS = maps:get(ps_saved, Bank),
+	    Pay = maps:get(payout, Bank),
 
-	    io:format("~s ~10s ~6w ~6w ~6w - ~6w ~6w ~6w - ~6w ~6w~n",
-		      [pretty_date(Date), "",
-		       Days, Saved, Lost,
+	    io:format("~6w ~6w ~6w - ~6w ~6w ~6w - ~6w ~6w - ~6w~n",
+		      [Days, Saved, Lost,
 		       PreD, PreS, PreU,
-		       PsD, PsS])
+		       PsD, PsS,
+		       Pay])
     end.
 
-pretty_date({Year, Month, Day}) ->
-    io_lib:format("~p-~2..0w-~2..0w", [Year, Month, Day]).
+pretty_date(Date = {Year, Month, Day}) ->
+    case get(date) of
+	Date ->
+	    "          ";
+	_ ->
+	    put(date, Date),
+	    io_lib:format("~p-~2..0w-~2..0w", [Year, Month, Day])
+    end.
+
+pretty_op(Op) ->
+    atom_to_list(Op).
+
+pretty_op(Op, Arg) ->
+    atom_to_list(Op) ++ "=" ++ integer_to_list(Arg).
 
 put_bank(Key, Value, State = #{bank := Bank}) ->
     State#{bank => maps:put(Key, Value, Bank)}.
