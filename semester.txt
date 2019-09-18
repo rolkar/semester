@@ -1,38 +1,33 @@
 2017-03-01 sallary=1000  # Work day sallary. Note, do not change when changing to part time
 2017-03-01 weekdays=5    # Number of days in week to work
 2017-03-01 pre_add=26    # Number of holidays in advance
-2017-03-01 ps=26         # According to payslip holidays left
+#2017-03-01 ps=26         # According to payslip holidays left
 2017-07-10 off=5         # Days off
 2017-07-17 off=5
 2017-07-24 off=5
 2017-07-31 off=1
-2017-08-01 ps=10
+#2017-08-01 ps=10
 2017-10-02 off=3
-2017-11-01 ps=7
+#2017-11-01 ps=7
 2018-01-01 new_year     # Save all left holidays and other bookkeeping
 2018-01-01 add=26       # Twentysix earned holidays
-2018-01-01 pre_add=4    # Four more holidays in advance
-2018-01-01 ps=30        # NOTE-fake: Not actually in the pay slip, but it should
-2018-01-01 ps_save=7    # NOTE-fake: Not actually in the pay slip, but it should
+#2018-01-01 ps=30        # NOTE-fake: Not actually in the pay slip, but it should
+#2018-01-01 ps_save=7    # NOTE-fake: Not actually in the pay slip, but it should
 2018-01-05 off=1
-2018-02-01 ps=29
+#2018-02-01 ps=29
 #2018-02-01 ps_save=7    # Saved holidays NOTE-fake: removed due to fake above
 2018-05-01 weekdays=3   # Number of weekdays for 60% work
 2018-07-02 off=3
 2018-07-09 off=3
 2018-07-16 off=3
 2018-07-23 off=3
-2018-08-01 ps=8
-2018-10-01 ps_save=5
-2018-10-01 ps=6
+#2018-08-01 ps=8
+#2018-10-01 ps_save=5
+#2018-10-01 ps=6
 2019-01-01 new_year
 2019-01-01 add=18
-2019-06-01 off=15
+2019-07-01 off=14
+2019-09-11 off=1
+2019-09-16 off=1
 2020-01-01 new_year
 2020-01-01 add=18
-2020-06-01 off=15
-2021-01-01 new_year
-2021-01-01 add=18
-2017-03-01 sallary=2000
-2021-06-01 off=15
-2022-01-01 new_year
