@@ -59,8 +59,6 @@ history(Commands) ->
 		    pre_days => 0,
 		    pre_used => 0,
 		    pre_saved => 0,
-		    ps_days => 0,
-		    ps_saved => 0,
 		    payout => 0}
 	     },
 	    []).
@@ -99,10 +97,6 @@ command({pre_add, Days}, State) ->
     add_bank(pre_days, Days, State);
 command({sallary, Sallary}, State) ->
     set_payout(State#{workday_sallary => Sallary});
-command({ps, Days}, State) ->
-    put_bank(ps_days, Days, State);
-command({ps_save, Days}, State) ->
-    put_bank(ps_saved, Days, State);
 command({new_year}, State) ->
     save_days(set_payout(compute_mean_weekdays(State)));
 command({weekdays, Days}, State) ->
@@ -189,11 +183,10 @@ display_op(Date, {Op,Arg}) ->
     io:format("~10s ~14s ", [pretty_date(Date), pretty_op(Op, Arg)]).
 
 display_header() ->
-    io:format("~10s ~14s ~6s ~6s ~6s - ~6s ~6s ~6s - ~6s ~6s - ~6s~n",
+    io:format("~10s ~14s ~6s ~6s ~6s - ~6s ~6s ~6s - ~6s~n",
 	      ["", "",
 	       "Days", "Saved", "Lost",
 	       "PrD", "PrS", "PrUsd",
-	       "PsD", "PsS",
 	       "Pay"]).
 
 display_bank(Bank, PrevBank) ->
@@ -207,14 +200,11 @@ display_bank(Bank, PrevBank) ->
 	    PreD = maps:get(pre_days, Bank),
 	    PreS = maps:get(pre_saved, Bank),
 	    PreU = maps:get(pre_used, Bank),
-	    PsD = maps:get(ps_days, Bank),
-	    PsS = maps:get(ps_saved, Bank),
 	    Pay = maps:get(payout, Bank),
 
-	    io:format("~6w ~6w ~6w - ~6w ~6w ~6w - ~6w ~6w - ~6w~n",
+	    io:format("~6w ~6w ~6w - ~6w ~6w ~6w - ~6w~n",
 		      [Days, Saved, Lost,
 		       PreD, PreS, PreU,
-		       PsD, PsS,
 		       Pay])
     end.
 
